@@ -12,6 +12,9 @@ var nokkiIfPipeline = pipeline {
 
     job("unit_tests") {
         inStage("test")
+
+        if(exist(./tests))
+
         withMatrix("os" -> List("ubuntu-latest", "macos-latest"))
         run(s"echo Running tests on ${os}")
         run("cargo test")
@@ -19,16 +22,9 @@ var nokkiIfPipeline = pipeline {
 
     job("deploy") {
         inStage("deploy")
-
-        rules {
-          - if ${tag} == "v*" {
-                when = manual
-            }    
-          - if ${sourceBranch} == "main" 
-          - if ${ciPipelineSource} == "schedule" {
-                when = never
-            }   
-        }
+        
+        manualIf(branch == "main" && tag ~= "v.*")
+        neverIf(source == "schedule" || env == "test")
 
         run("./deploy.sh")
     }
