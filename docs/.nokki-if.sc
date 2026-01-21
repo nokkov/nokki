@@ -1,4 +1,4 @@
-val nokkiPipeline = pipeline {
+var nokkiIfPipeline = pipeline {
     stage("build")
     stage("test")
     stage("deploy")
@@ -17,13 +17,19 @@ val nokkiPipeline = pipeline {
         run("cargo test")
     }
 
-    job("deploy_to_stage") {
+    job("deploy") {
         inStage("deploy")
-        script {
-            - echo "Starting deploy..."
-            - scripts/deploy.sh
-            - helm upgrade --install
-                chart-path release_name --option one --option two
+
+        rules {
+          - if ${tag} == "v*" {
+                when = manual
+            }    
+          - if ${sourceBranch} == "main" 
+          - if ${ciPipelineSource} == "schedule" {
+                when = never
+            }   
         }
+
+        run("./deploy.sh")
     }
 }
