@@ -11,6 +11,13 @@ nokki_pipeline! {
         "custom-registry/devops-lib" as devops
     };
 
+    default {
+        image: "rust:1.75-slim",
+        timeout: "30m",
+        tags: ["shared-runner"],
+        after_script: ["echo 'Job stage finished'"]
+    }
+
     stages: "build", "test", "deploy";
 
     job "compile" => {
@@ -78,6 +85,14 @@ nokki_pipeline! {
             "os": ["ubuntu-latest", "macos-latest"]
         };
 
+        // sidecar services
+        services: {
+            "db": image("postgres:15-alpine")
+                .env("POSTGRES_PASSWORD", "pass")
+                .env("POSTGRES_DB", "test_db"),
+            "redis": image("redis:7-alpine")
+        };
+
         tags: ["${{ matrix.os }}"];
         
         cache: {
@@ -112,6 +127,18 @@ nokki_pipeline! {
         environment: {
             name: "canary",
             url: "https://canary-${{ CI_COMMIT_SHORT_SHA }}.nokki.dev",
+        };
+
+        secrets: {
+            // Подтягиваем из встроенного хранилища Nokki/Gitea
+            "KUBE_TOKEN": secret("PROD_KUBE_TOKEN"),
+            
+            // Подтягиваем напрямую из HashiCorp Vault
+            "DB_PASSWORD": vault {
+                path: "secret/data/nokki/prod/db",
+                field: "password",
+                engine: "v2"
+            }
         };
 
         run: "helm upgrade --install --set traffic=${{ traffic }}";
