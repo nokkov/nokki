@@ -130,10 +130,8 @@ nokki_pipeline! {
         };
 
         secrets: {
-            // Подтягиваем из встроенного хранилища Nokki/Gitea
             "KUBE_TOKEN": secret("PROD_KUBE_TOKEN"),
             
-            // Подтягиваем напрямую из HashiCorp Vault
             "DB_PASSWORD": vault {
                 path: "secret/data/nokki/prod/db",
                 field: "password",
